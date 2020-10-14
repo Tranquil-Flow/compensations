@@ -299,15 +299,12 @@ contract Compensation is Ownable {
     uint256 public totalAvailableTokens;
     mapping(address => uint256) public tokenClaimLimit;
     mapping(address => uint256) public tokensClaimed;
+    bool public compensationAdded;
     IERC20 public CompToken;
 
-    event Refill(
-        address _owner,
-        uint256 compensationPerRound,
-        uint256 _totalAvailable
-    );
+    event Fill(address owner, uint256 totalCompensation);
     event Claim(address _receiver, uint256 _amount);
-    event NextRound(uint256 currentRound);
+    event NextRound(uint256 currentRound, uint256 compensationPerRound);
 
     constructor(
         address _token,
@@ -318,6 +315,7 @@ contract Compensation is Ownable {
         totalRounds = _totalRounds;
         totalTokensCompensation = _totalTokensCompensation;
         compensationPerRound = _totalTokensCompensation.div(_totalRounds);
+        compensationAdded = false;
     }
 
     /**
@@ -355,31 +353,34 @@ contract Compensation is Ownable {
     }
 
     /**
-     * @dev unlocks another round of compensation tokens to be claimed
+     * @dev fills the contract with the total amount of tokens to be distributed in compensation
      */
-    function refill() public payable onlyOwner {
+    function fill() public payable onlyOwner {
         require(
             CompToken.transferFrom(
                 msg.sender,
                 address(this),
-                compensationPerRound
+                totalTokensCompensation
             ),
             "Transfer failed. Have the tokens been approved to the contract?"
         );
-        totalAvailableTokens = totalAvailableTokens.add(compensationPerRound);
-        emit Refill(msg.sender, compensationPerRound, totalAvailableTokens);
+        compensationAdded = true;
+        emit Fill(msg.sender, totalTokensCompensation);
     }
 
     /**
-     * @dev unlocks another round of tokens for compensation
+     * @dev unlocks another round of tokens for compensation to be claimed
      */
     function startnextround() public onlyOwner {
+        require(
+            compensationAdded = true,
+            "Compensation has not been added. Use function fill."
         require(
             currentRound != totalRounds,
             "Compensation completed, all rounds have been completed."
         );
         currentRound++;
-        refill();
-        emit NextRound(currentRound);
+        totalAvailableTokens = totalAvailableTokens.add(compensationPerRound);
+        emit NextRound(currentRound, compensationPerRound);
     }
 }
